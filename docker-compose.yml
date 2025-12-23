@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    environment:
+      - APP_ENV=production
+    volumes:
+      - ./:/var/www
+    depends_on:
+      - db
+      - redis
+    networks:
+      - appnet
+
+  web:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - appnet
+
+  db:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: billing
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - appnet
+
+  redis:
+    image: redis:7
+    networks:
+      - appnet
+
+  worker:
+    build: .
+    command: php artisan queue:work --sleep=3 --tries=3 --timeout=90
+    depends_on:
+      - redis
+      - db
+    networks:
+      - appnet
+
+  scheduler:
+    build: .
+    command: sh -c "while :; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
+    networks:
+      - appnet
+
+volumes:
+  db_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  appnet:
+    driver: bridge

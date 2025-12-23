@@ -1,0 +1,17 @@
+{
+  "name": "isthisvishal/billing-panel",
+  "description": "Billing and hosting automation platform",
+  "type": "project",
+  "autoload": {
+    "psr-4": {
+      "App\\": "app/",
+      "Database\\Factories\\": "database/factories/"
+    }
+  },
+  "require": {
+    "php": ">=8.1"
+  },
+  "scripts": {
+    "test": "phpunit"
+  }
+}

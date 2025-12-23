@@ -1,0 +1,6 @@
+{
+  "key": "stripe",
+  "name": "Stripe",
+  "type": "payment",
+  "class": "App\\Plugins\\Payments\\StripePlugin"
+}

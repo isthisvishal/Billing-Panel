@@ -286,56 +286,16 @@ EOF
   section "CONFIGURING DATABASE"
   
   info "Running migrations..."
-  docker exec billing-panel-app php artisan migrate --force > /dev/null 2>&1
+  if ! docker exec billing-panel-app php artisan migrate --force 2>&1; then
+    error_exit "Database migrations failed. Check container logs: docker logs billing-panel-app"
+  fi
   success "Database migrations complete"
   
-  # Create admin user
-  info "Creating default admin user..."
-  docker exec billing-panel-app php artisan tinker > /dev/null 2>&1 <<'TINKER'
-$user = new App\Models\User();
-$user->name = 'Admin';
-$user->email = 'admin@example.com';
-$user->password = Hash::make('password');
-$user->is_admin = true;
-$user->save();
-TINKER
-  success "Admin user created (admin@example.com / password)"
-  
-  # Create default pages
-  info "Creating default pages..."
-  docker exec billing-panel-app php artisan tinker > /dev/null 2>&1 <<'TINKER'
-$pages = [
-    ['title' => 'Privacy Policy', 'slug' => 'privacy', 'content' => '<h1>Privacy Policy</h1><p>Your privacy policy here.</p>', 'is_published' => true, 'created_by' => 1, 'updated_by' => 1],
-    ['title' => 'Terms of Service', 'slug' => 'terms', 'content' => '<h1>Terms of Service</h1><p>Your terms here.</p>', 'is_published' => true, 'created_by' => 1, 'updated_by' => 1],
-    ['title' => 'FAQ', 'slug' => 'faq', 'content' => '<h1>Frequently Asked Questions</h1><p>FAQ content here.</p>', 'is_published' => true, 'created_by' => 1, 'updated_by' => 1],
-];
-foreach ($pages as $page) { App\Models\Page::create($page); }
-TINKER
-  success "Default pages created"
-  
-  # Create sample service
-  info "Creating sample VPS category..."
-  docker exec billing-panel-app php artisan tinker > /dev/null 2>&1 <<'TINKER'
-$category = new App\Models\ServiceCategory();
-$category->name = 'VPS Hosting';
-$category->slug = 'vps-hosting';
-$category->description = 'High-performance virtual private servers.';
-$category->is_active = true;
-$category->display_order = 1;
-$category->save();
-
-$plan = new App\Models\Plan();
-$plan->service_category_id = $category->id;
-$plan->name = 'Starter VPS';
-$plan->slug = 'starter';
-$plan->description = 'Perfect for beginners';
-$plan->price_monthly = 9.99;
-$plan->price_yearly = 99.99;
-$plan->features = ['1 vCPU', '2 GB RAM', '50 GB SSD', 'DDoS Protection'];
-$plan->is_active = true;
-$plan->save();
-TINKER
-  success "Sample VPS category created"
+  info "Seeding database with initial data..."
+  if ! docker exec billing-panel-app php artisan db:seed --force 2>&1; then
+    error_exit "Database seeding failed. Check container logs: docker logs billing-panel-app"
+  fi
+  success "Database seeded with initial data"
   
   # Success message
   section "INSTALLATION COMPLETE"

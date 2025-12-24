@@ -286,13 +286,13 @@ EOF
   section "CONFIGURING DATABASE"
   
   info "Running migrations..."
-  if ! docker exec billing-panel-app php artisan migrate --force 2>&1; then
+  if ! docker exec -w /var/www billing-panel-app php artisan migrate --force 2>&1; then
     error_exit "Database migrations failed. Check container logs: docker logs billing-panel-app"
   fi
   success "Database migrations complete"
   
   info "Seeding database with initial data..."
-  if ! docker exec billing-panel-app php artisan db:seed --force 2>&1; then
+  if ! docker exec -w /var/www billing-panel-app php artisan db:seed --force 2>&1; then
     error_exit "Database seeding failed. Check container logs: docker logs billing-panel-app"
   fi
   success "Database seeded with initial data"

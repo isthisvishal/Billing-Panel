@@ -162,7 +162,14 @@ install_billing_panel() {
   # Clone repo
   info "Cloning repository..."
   [[ -d "$INSTALL_DIR" ]] && rm -rf "$INSTALL_DIR"
-  git clone -b "$REPO_BRANCH" "$REPO_URL" "$INSTALL_DIR" > /dev/null 2>&1
+  if ! git clone -b "$REPO_BRANCH" "$REPO_URL" "$INSTALL_DIR" > /dev/null 2>&1; then
+    error_exit "Failed to clone repository from $REPO_URL. Check your internet connection."
+  fi
+  
+  if [[ ! -d "$INSTALL_DIR" ]] || [[ ! -f "$INSTALL_DIR/Caddyfile" ]]; then
+    error_exit "Repository clone incomplete. Caddyfile not found."
+  fi
+  
   cd "$INSTALL_DIR"
   success "Repository cloned to $INSTALL_DIR"
   
@@ -192,6 +199,9 @@ EOF
   success ".env file created"
   
   # Update Caddyfile
+  if [[ ! -f "Caddyfile" ]]; then
+    error_exit "Caddyfile not found in $INSTALL_DIR"
+  fi
   sed -i "s/billing.example.com/$domain/g" Caddyfile
   success "Web server configured"
   

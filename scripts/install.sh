@@ -39,12 +39,15 @@ fi
 
 echo ""
 echo "Please answer the following questions:"
-read -p "Enter your domain name (e.g. billing.example.com): " DOMAIN
+echo ""
+
+# Read from terminal instead of stdin (important for curl piped scripts)
+read -p "Enter your domain name (e.g. billing.example.com): " DOMAIN < /dev/tty
 if [ -z "$DOMAIN" ]; then
   error_exit "Domain name cannot be empty"
 fi
 
-read -sp "Enter MySQL root password (or press Enter for default 'secret'): " DB_PASSWORD
+read -sp "Enter MySQL root password (or press Enter for default 'secret'): " DB_PASSWORD < /dev/tty
 DB_PASSWORD=${DB_PASSWORD:-secret}
 echo ""
 

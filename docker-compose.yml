@@ -4,14 +4,30 @@ services:
   app:
     build: .
     environment:
-      - APP_ENV=production
+      - APP_ENV=${APP_ENV:-production}
+      - APP_DEBUG=${APP_DEBUG:-false}
+      - APP_URL=${APP_URL:-http://localhost}
+      - DB_HOST=db
+      - DB_DATABASE=${DB_DATABASE:-billing}
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-secret}
+      - QUEUE_CONNECTION=${QUEUE_CONNECTION:-database}
+      - REDIS_HOST=redis
     volumes:
       - ./:/var/www
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - appnet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   web:
     image: caddy:2
@@ -28,17 +44,27 @@ services:
   db:
     image: mysql:8
     environment:
-      MYSQL_ROOT_PASSWORD: secret
-      MYSQL_DATABASE: billing
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_DATABASE: ${DB_DATABASE:-billing}
     volumes:
       - db_data:/var/lib/mysql
     networks:
       - appnet
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7
     networks:
       - appnet
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   worker:
     build: .

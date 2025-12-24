@@ -1,0 +1,39 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.log
+
+# Docker
+docker-compose.override.yml
+
+# Laravel
+storage/
+bootstrap/cache/
+vendor/
+node_modules/
+
+# Caddyfile with real data
+Caddyfile
+
+# Backups
+*.sql
+*.sql.gz
+backups/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dependencies
+composer.lock
+package-lock.json
+yarn.lock

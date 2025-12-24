@@ -185,8 +185,8 @@ install_billing_panel() {
     error_exit "Failed to clone repository after $max_retries attempts. Check internet connectivity:\n$git_output"
   fi
   
-  if [[ ! -d "$INSTALL_DIR" ]] || [[ ! -f "$INSTALL_DIR/Caddyfile" ]]; then
-    error_exit "Repository clone incomplete. Caddyfile not found in $INSTALL_DIR. Verify the repository contains this file."
+  if [[ ! -d "$INSTALL_DIR" ]]; then
+    error_exit "Repository clone failed. Directory $INSTALL_DIR not created."
   fi
   
   cd "$INSTALL_DIR"
@@ -217,11 +217,47 @@ MAIL_MAILER=log
 EOF
   success ".env file created"
   
-  # Update Caddyfile
-  if [[ ! -f "Caddyfile" ]]; then
-    error_exit "Caddyfile not found in $INSTALL_DIR"
-  fi
-  sed -i "s/billing.example.com/$domain/g" Caddyfile
+  # Create Caddyfile (it's in .gitignore, so we generate it)
+  info "Generating web server configuration..."
+  cat > Caddyfile <<EOF
+# Caddy configuration for Billing-Panel
+$domain {
+	# Serve static files from public directory
+	root * /var/www/public
+
+	# Route PHP files to PHP-FPM
+	php_fastcgi app:9000 {
+		# Timeouts for long-running requests
+		timeout 300s
+		read_timeout 300s
+		write_timeout 300s
+	}
+
+	# Enable file serving
+	file_server
+
+	# Security headers
+	header {
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Permitted-Cross-Domain-Policies "none"
+	}
+
+	# Compression
+	encode gzip
+
+	# Handle 404s by routing to index.php (SPA/Laravel)
+	try_files {path} {path}/ /index.php?{query}
+
+	# Log errors
+	log {
+		output stdout
+		level debug
+	}
+}
+EOF
   success "Web server configured"
   
   section "STARTING SERVICES"

@@ -180,6 +180,10 @@ install_billing_panel() {
     fi
     rm -rf "$INSTALL_DIR"
   fi
+
+  # Ensure we're not in a removed/non-existent working directory before cloning
+  # (protects against "fatal: Unable to read current working directory: No such file or directory")
+  cd /tmp || true
   
   local clone_success=0
   local max_retries=3

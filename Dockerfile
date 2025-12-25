@@ -43,10 +43,19 @@ COPY composer.json composer.lock* ./
 
 
 
+
 # Copy the entire Laravel application (including artisan) before composer install
 COPY . /var/www
 
-# Install composer dependencies (after artisan exists)
+# Create required Laravel runtime directories and set permissions before composer install
+RUN mkdir -p /var/www/bootstrap/cache \
+    /var/www/storage \
+    /var/www/storage/framework \
+    /var/www/storage/logs \
+    && chown -R www-data:www-data /var/www/bootstrap/cache /var/www/storage \
+    && chmod -R 775 /var/www/bootstrap/cache /var/www/storage
+
+# Install composer dependencies (after required directories exist)
 RUN composer install \
     --no-dev \
     --optimize-autoloader \

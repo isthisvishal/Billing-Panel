@@ -286,7 +286,7 @@ EOF
   if [[ ! -f "artisan" ]]; then
     info "No Laravel application detected. Attempting to create a new Laravel project using Composer (this requires internet access)..."
     if ! docker run --rm -v "$INSTALL_DIR":/app -w /app composer:2 create-project laravel/laravel /app --prefer-dist --no-interaction 2>&1; then
-      info "Composer create-project failed or network unavailable. The installer will continue, but migrations will be skipped."
+      error_exit "Composer create-project failed or network unavailable. Aborting installation; please retry or run the installer with network access."
     else
       success "Laravel application scaffolded successfully"
     fi
@@ -311,24 +311,30 @@ EOF
   info "Ensuring PHP dependencies are installed in container..."
   if docker exec -w /var/www billing-panel-app test -f composer.json >/dev/null 2>&1; then
     if ! docker exec -w /var/www billing-panel-app composer install --no-dev --optimize-autoloader --no-interaction 2>&1; then
-      info "Composer install failed inside container; proceeding but the app may be incomplete"
+      error_exit "Composer install failed inside container; aborting installation. Check container logs: docker logs billing-panel-app"
     else
       success "PHP dependencies installed"
     fi
   else
-    info "No composer.json found in /var/www; skipping composer install"
+    error_exit "No composer.json found in /var/www inside the container; the application is incomplete"
   fi
 
   # Set correct permissions for Laravel storage and cache
   info "Setting filesystem permissions..."
-  docker exec -w /var/www billing-panel-app sh -c "chown -R www-data:www-data storage bootstrap/cache || true"
-  docker exec -w /var/www billing-panel-app sh -c "chmod -R 775 storage bootstrap/cache || true"
+  if ! docker exec -w /var/www billing-panel-app sh -c "chown -R www-data:www-data storage bootstrap/cache"; then
+    error_exit "Failed to set ownership on storage or bootstrap/cache inside container"
+  fi
+  if ! docker exec -w /var/www billing-panel-app sh -c "chmod -R 775 storage bootstrap/cache"; then
+    error_exit "Failed to set permissions on storage or bootstrap/cache inside container"
+  fi
   success "Filesystem permissions set"
 
   # Generate application key if artisan exists
   if docker exec -w /var/www billing-panel-app test -f artisan >/dev/null 2>&1; then
     info "Generating application key..."
-    docker exec -w /var/www billing-panel-app php artisan key:generate --force || info "artisan key:generate failed"
+    if ! docker exec -w /var/www billing-panel-app php artisan key:generate --force 2>&1; then
+      error_exit "artisan key:generate failed. Aborting. Check container logs: docker logs billing-panel-app"
+    fi
   fi
   
   # Wait for database

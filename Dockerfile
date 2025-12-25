@@ -41,24 +41,37 @@ COPY composer.json composer.lock* ./
 
 
 
-# Copy application files (overwriting stub files with your code)
-COPY . /var/www
+# Create a fresh Laravel application skeleton before merging project files
+# This ensures the framework, core service providers and expected structure exist
+RUN composer create-project laravel/laravel . --no-interaction --prefer-dist --stability=stable
 
-# Create necessary directories with proper permissions BEFORE composer install
-RUN mkdir -p storage/logs \
-    storage/framework/views \
-    storage/framework/cache \
-    bootstrap/cache \
-    && chown -R www-data:www-data /var/www \
-    && chmod -R 775 storage bootstrap/cache
+# Copy our application files into the Laravel skeleton (preserve vendor)
+# Selective copy to avoid overwriting Laravel core files like vendor/ and node_modules/
+COPY app/ app/
+COPY bootstrap/ bootstrap/
+COPY config/ config/
+COPY database/ database/
+COPY resources/ resources/
+COPY routes/ routes/
+COPY public/ public/
+COPY composer.json composer.json
+COPY composer.lock composer.lock*
+COPY .env.example .env.example
+COPY scripts/ scripts/
+COPY Dockerfile Dockerfile
+COPY vite.config.js vite.config.js
 
-# Install composer dependencies
+# Install composer dependencies (merge project's composer requirements)
 RUN composer install \
     --no-dev \
     --optimize-autoloader \
     --no-interaction \
-    --no-progress \
-    2>&1
+    --no-progress
+
+# Ensure directories exist with correct permissions
+RUN mkdir -p storage/logs storage/framework/{views,cache} bootstrap/cache \
+    && chown -R www-data:www-data /var/www \
+    && chmod -R 775 storage bootstrap/cache
 
 # Make artisan executable
 RUN chmod +x artisan 2>/dev/null || true
@@ -66,19 +79,8 @@ RUN chmod +x artisan 2>/dev/null || true
 # Set PHP-FPM to listen on all interfaces
 RUN sed -i 's/listen = 127.0.0.1:9000/listen = 0.0.0.0:9000/' /usr/local/etc/php-fpm.d/www.conf
 
-# Create entrypoint script
-RUN echo '#!/bin/bash\n\
-set -e\n\
-# Ensure directories exist with correct permissions\n\
-mkdir -p storage/logs storage/framework/{views,cache} bootstrap/cache\n\
-chown -R www-data:www-data /var/www\n\
-chmod -R 775 storage bootstrap/cache\n\
-# Run migrations if APP_ENV is not testing\n\
-if [ "$APP_ENV" != "testing" ]; then\n\
-  echo "Running migrations..."\n\
-  php artisan migrate --force 2>/dev/null || true\n\
-fi\n\
-exec "$@"' > /usr/local/bin/docker-entrypoint.sh && chmod +x /usr/local/bin/docker-entrypoint.sh
+# Create robust entrypoint that waits for DB and fails loudly on migration errors
+RUN echo '#!/usr/bin/env bash\nset -euo pipefail\n\n# Ensure directories exist and permissions are correct\nmkdir -p /var/www/storage/logs /var/www/storage/framework/{views,cache} /var/www/bootstrap/cache\nchown -R www-data:www-data /var/www\nchmod -R 775 /var/www/storage /var/www/bootstrap/cache\n\n# If APP_ENV is not testing, attempt to run migrations with retries\nif [ "${APP_ENV:-}" != "testing" ]; then\n  echo "Waiting for database and running migrations..."\n  MAX_TRIES=30\n  TRY=0\n  until php artisan migrate --force; do\n    TRY=$((TRY+1))\n    if [ "$TRY" -ge "$MAX_TRIES" ]; then\n      echo "ERROR: Migrations failed after ${MAX_TRIES} attempts." >&2\n      exit 1\n    fi\n    echo "Migration attempt ${TRY}/${MAX_TRIES} failed; retrying in 2s..." >&2\n    sleep 2\n  done\nfi\n\nexec "$@"' > /usr/local/bin/docker-entrypoint.sh && chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Expose port
 EXPOSE 9000

@@ -44,4 +44,4 @@ if [ "${APP_ENV:-}" != "testing" ]; then
 fi
 
 log "Startup complete, launching php-fpm in foreground"
-exec php-fpm
+exec php-fpm -F

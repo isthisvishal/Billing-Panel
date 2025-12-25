@@ -40,8 +40,17 @@ COPY composer.json composer.lock* ./
 
 
 
+
 # Copy application files (overwriting stub files with your code)
 COPY . /var/www
+
+# Create necessary directories with proper permissions BEFORE composer install
+RUN mkdir -p storage/logs \
+    storage/framework/views \
+    storage/framework/cache \
+    bootstrap/cache \
+    && chown -R www-data:www-data /var/www \
+    && chmod -R 775 storage bootstrap/cache
 
 # Install composer dependencies
 RUN composer install \
@@ -50,14 +59,6 @@ RUN composer install \
     --no-interaction \
     --no-progress \
     2>&1
-
-# Create necessary directories with proper permissions
-RUN mkdir -p storage/logs \
-    storage/framework/views \
-    storage/framework/cache \
-    bootstrap/cache \
-    && chown -R www-data:www-data /var/www \
-    && chmod -R 775 storage bootstrap/cache
 
 # Make artisan executable
 RUN chmod +x artisan 2>/dev/null || true

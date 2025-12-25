@@ -170,7 +170,16 @@ install_billing_panel() {
   fi
   
   # Remove existing installation if present
-  [[ -d "$INSTALL_DIR" ]] && rm -rf "$INSTALL_DIR"
+  # If the current working directory is inside the install dir, move out
+  if [[ -d "$INSTALL_DIR" ]]; then
+    local cwd
+    cwd=$(pwd -P || true)
+    if [[ -n "$cwd" && ("$cwd" == "$INSTALL_DIR" || "$cwd" == "$INSTALL_DIR"/*) ]]; then
+      info "Current working directory is inside $INSTALL_DIR; switching to /tmp before removal..."
+      cd /tmp || error_exit "Failed to change directory to /tmp"
+    fi
+    rm -rf "$INSTALL_DIR"
+  fi
   
   local clone_success=0
   local max_retries=3

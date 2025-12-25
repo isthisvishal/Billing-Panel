@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zip \
     ca-certificates \
     openssl \
+    php8.2-fpm \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
